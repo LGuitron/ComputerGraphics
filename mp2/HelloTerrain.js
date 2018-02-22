@@ -286,7 +286,7 @@ function setLightUniforms(loc,a,d,s) {
  * Populate buffers with data
  */
 function setupBuffers() {
-    myTerrain = new Terrain(16,-0.5,0.5,-0.5,0.5, 2, 0);    //Added parameters for diamond square in constructor
+    myTerrain = new Terrain(64,-0.5,0.5,-0.5,0.5, 0.4, 0.6);    //Added parameters for diamond square in constructor
     myTerrain.loadBuffers();
 }
 

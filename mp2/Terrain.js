@@ -37,6 +37,12 @@ class Terrain{
         this.generateTriangles();
         console.log("Terrain: Generated triangles");
         
+        this.diamondSquare();
+        console.log("Terrain: Random elevations with diamond-square")
+        
+        this.calculateNormals();
+        console.log("Terrain: Calculated normals for each vertex")
+        
         this.generateLines();
         console.log("Terrain: Generated lines");
         
@@ -199,7 +205,6 @@ generateTriangles()
     //
     this.numVertices = this.vBuffer.length/3;
     this.numFaces = this.fBuffer.length/3;
-    this.diamondSquare();
 }
 
 /**
@@ -254,6 +259,7 @@ generateLines()
  * Diamond-square algorithm for terrain elevations
  * 
  */
+
 diamondSquare()
 {
     //Set range of random value for current iteration
@@ -264,6 +270,7 @@ diamondSquare()
     var c_br = 3*this.div + 2
     var c_tl = 3*this.div*(this.div+1) + 2
     var c_tr = 3*this.div*(this.div+1)+3*this.div + 2
+    //console.log(c_bl + " " + c_br + " " + c_tl + " " +c_tr)
     
     //Generate 4 random numbers for the corners and set new Z values in the buffer
     var v_bl = rand_range*Math.random()-0.5*rand_range
@@ -276,95 +283,80 @@ diamondSquare()
     this.vBuffer[c_br] = v_br
     this.vBuffer[c_tl] = v_tl
     this.vBuffer[c_tr] = v_tr
-    
-    //Recursive call to diamond square (the first edges are only going to have 3 neighbors)
-    this.recursive_diamond_square(c_bl, c_br, c_tl, c_tr, v_bl, v_br, v_tl, v_tr, rand_range)
-}
 
-//Function for making recursive diamnod square calls
-recursive_diamond_square(c_bl, c_br, c_tl, c_tr, v_bl, v_br, v_tl, v_tr, rand_range)
-{
-    //Decrease magnitude of rand_range
-    rand_range = rand_range*this.rand_range_decay
-
-    //As long as center vertex exists, 
-    var c_center = (c_bl + c_tr)/2
-
-    if (c_center % 3 == 2)
+    //Looping from side lengths of exponentially decreasing size (divided by 2)
+    for(var sideLength = this.div; sideLength>=2; sideLength = sideLength = sideLength/2) 
     {
-        //Perform diamond step
-        var v_center = (v_bl + v_br + v_tl + v_tr)/4 + rand_range*Math.random()-0.5*rand_range
-        this.vBuffer[c_center] = v_center
+        rand_range = this.rand_range_decay*rand_range
+        var halfSide = sideLength/2 
         
-        //Perform square step
-        var c_bm = (c_br + c_bl)/2
-        var c_lm = (c_tl + c_bl)/2
-        var c_tm = (c_tl + c_tr)/2
-        var c_rm = (c_tr + c_br)/2
-        
-        //Check existence of vertices for square step
-        if(c_bm % 3 == 2)
+        //Diamond Steps
+        for(var x=halfSide;x<this.div;x+=sideLength)
         {
-            //Calculate x and y indeces of new vertices
-            //To determine if they have 3 or 4 neighbors
-            var bm_y_coord = Math.floor(((c_bm-2)/3)/(this.div+1));
-            var tm_y_coord = Math.floor(((c_tm-2)/3)/(this.div+1));
-            var lm_x_coord = ((c_lm-2)/3)%(this.div+1);
-            var rm_x_coord = ((c_rm-2)/3)%(this.div+1);
-            
-            ///////////////////////////Bottom Middle vertex/////////////////
-            if(bm_y_coord>0)
+            for(var y=halfSide;y<=this.div;y+=sideLength)
             {
-                //var below_bm = c_bm - y_index_delta;
-                var below_bm = c_bm - (c_center - c_bm)
-                var v_bm = (v_bl + v_br + v_center + this.vBuffer[below_bm])/4 + rand_range*Math.random()-0.5*rand_range
+                
+                c_bl = 3*x - 3*halfSide  + 3*y*(this.div+1) - 3*halfSide*(this.div+1)  + 2 
+                c_br = 3*x + 3*halfSide  + 3*y*(this.div+1) - 3*halfSide*(this.div+1)  + 2 
+                c_tl = 3*x - 3*halfSide  + 3*y*(this.div+1) + 3*halfSide*(this.div+1)  + 2 
+                c_tr = 3*x + 3*halfSide  + 3*y*(this.div+1) + 3*halfSide*(this.div+1)  + 2 
+                
+                var c_center = 3*x + 3*y*(this.div+1) + 2
+                var v_center = (this.vBuffer[c_bl]+this.vBuffer[c_br]+this.vBuffer[c_tl]+this.vBuffer[c_tr])/4 + rand_range*Math.random()-0.5*rand_range
+                this.vBuffer[c_center] = v_center
             }
-            else
-                var v_bm = (v_bl + v_br + v_center)/3 + rand_range*Math.random()-0.5*rand_range
-            this.vBuffer[c_bm] = v_bm
-            
-            ///////////////////////////Left Middle vertex/////////////////
-            if(lm_x_coord>0)
-            {
-                //var left_lm = c_lm - x_index_delta;
-                var left_lm = c_lm - (c_center - c_lm);
-                var v_lm = (v_bl + v_tl + v_center + this.vBuffer[left_lm])/4 + rand_range*Math.random()-0.5*rand_range
-            }
-            else
-                var v_lm = (v_bl + v_tl + v_center)/3 + rand_range*Math.random()-0.5*rand_range
-            this.vBuffer[c_lm] = v_lm
-            
-            ///////////////////////////Top Middle vertex/////////////////
-            if(tm_y_coord<this.div)
-            {
-                var above_tm = c_tm - (c_center - c_tm);
-                var v_tm = (v_tl + v_tr + v_center + this.vBuffer[above_tm])/4 + rand_range*Math.random()-0.5*rand_range
-            }
-            else
-                var v_tm = (v_tl + v_tr + v_center)/3 + rand_range*Math.random()-0.5*rand_range
-            this.vBuffer[c_tm] = v_tm
-            
-            ///////////////////////////Right Middle vertex/////////////////
-            if(rm_x_coord<this.div)
-            {
-                var right_rm = c_rm - (c_center - c_rm);
-                var v_rm = (v_tr + v_br + v_center + this.vBuffer[right_rm])/4 + rand_range*Math.random()-0.5*rand_range
-            }
-            else
-                var v_rm = (v_tr + v_br + v_center)/3 + rand_range*Math.random()-0.5*rand_range
-            this.vBuffer[c_rm] = v_rm
-            
-            //this.recursive_diamond_square(c_bl, c_br, c_tl, c_tr, v_bl, v_br, v_tl, v_tr, rand_range, false)
-            //Recursive call 4 new squares (all edges in new squares will have 4 neighbors)//
-            this.recursive_diamond_square(c_bl, c_bm, c_lm, c_center, v_bl, v_bm, v_lm, v_center, rand_range)
-            this.recursive_diamond_square(c_bm, c_br, c_center, c_rm, v_bm, v_br, v_center, v_rm, rand_range)
-            this.recursive_diamond_square(c_lm, c_center, c_tl, c_tm, v_lm, v_center, v_tl, v_tm, rand_range)
-            this.recursive_diamond_square(c_center, c_rm, c_tm, c_tr, v_center, v_rm, v_tm, v_tr, rand_range)
-            
         }
         
-    }    
+        //Square steps
+        for(var x=0;x<=this.div;x+=halfSide)
+        {
+            for(var y=(x+halfSide)%sideLength;y<=this.div;y+=sideLength)
+            {
+                var c_up = 3*x + 3*y*(this.div+1) + 3*halfSide*(this.div+1)  + 2 
+                var c_down = 3*x + 3*y*(this.div+1) - 3*halfSide*(this.div+1)  + 2  
+                var c_left = 3*x - 3*halfSide + 3*y*(this.div+1) + 2 
+                var c_right = 3*x + 3*halfSide + 3*y*(this.div+1) + 2 
+                
+                var c_center = 3*x + 3*y*(this.div+1) + 2
+                
+                //Left edge
+                if(x==0)
+                    var v_center = (this.vBuffer[c_up]+this.vBuffer[c_down]+this.vBuffer[c_right])/3 + rand_range*Math.random()-0.5*rand_range
+                
+                //Right Edge
+                //lse if(x==this.div-1)
+                else if(x==this.div)
+                    var v_center = (this.vBuffer[c_up]+this.vBuffer[c_down]+this.vBuffer[c_left])/3 + rand_range*Math.random()-0.5*rand_range
+                
+                //Down edge
+                else if(y==0)
+                    var v_center = (this.vBuffer[c_up]+this.vBuffer[c_left]+this.vBuffer[c_right])/3 + rand_range*Math.random()-0.5*rand_range
+                
+                //Up Edge
+                else if(y==this.div)
+                    var v_center = (this.vBuffer[c_down]+this.vBuffer[c_left]+this.vBuffer[c_right])/3 + rand_range*Math.random()-0.5*rand_range
+                
+                //Center edge
+                else
+                    var v_center = (this.vBuffer[c_up]+this.vBuffer[c_down]+this.vBuffer[c_left]+this.vBuffer[c_right])/4 + rand_range*Math.random()-0.5*rand_range
+                this.vBuffer[c_center] = v_center
+            }
+        }
+    }
 }
-    
-    
+
+//Function for recalculating triangle normals after diamond square
+calculateNormals()
+{
+    for(var x=0;x<=this.div;x+=1)
+    {
+        for(var y=0;y<=this.div;y+=1)
+        {
+            var vid = x + y*(this.div+1)
+            var v
+            //console.log(vid)
+        }
+    }
+}
+
 }
