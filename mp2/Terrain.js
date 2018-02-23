@@ -3,6 +3,37 @@
  * @author Eric Shaffer
  */
 
+
+
+/*
+ * Global colors used at different terrain hights 
+ */
+
+var diff_snow = [255/255, 250/255, 250/255,1];
+var diff_rock = [90/255, 77/255, 65/255, 1];
+var diff_earth = [115/255, 69/255, 35/255, 1];
+var diff_grass = [96/255, 128/255, 56/255, 1];
+var diff_sand = [194/255, 178/255, 128/255, 1];
+var diff_shallow_sea = [59/255, 226/255, 204/255, 1];
+var diff_deep_sea = [40/255, 80/255, 213/255, 1];
+
+// Value for controlling height of corners in terms of the
+// Initial roughness value
+//High corners +- 0.5, low corners +-0.5/2
+var cornerHeight = 0.2      
+
+//Percentile value for each material
+//These values go according to the values initially assigned to the corners
+// (Highest corner 1.00, lowest corner 0.00)
+var frac_snow = 0.85
+var frac_rock = 0.57
+var frac_earth = 0.40
+var frac_grass = -0.37
+var frac_sand = -0.55
+var frac_shallow_sea = -0.68
+//Deep sea goes from -1.0 up to shallow sea value
+
+
 /** Class implementing 3D terrain. */
 class Terrain{   
 /**
@@ -33,12 +64,17 @@ class Terrain{
         // Allocate array for edges so we can draw wireframe
         this.eBuffer = [];
         console.log("Terrain: Allocated buffers");
+        // Allocate array for material diffuse colors
+        this.difBuffer = [];
         
         this.generateTriangles();
         console.log("Terrain: Generated triangles");
         
         this.diamondSquare();
         console.log("Terrain: Random elevations with diamond-square")
+        
+        //console.log("V: " + this.vBuffer)
+        //console.log("C: " + this.difBuffer)
         
         this.calculateNormals();
         console.log("Terrain: Calculated normals for each vertex")
@@ -123,6 +159,30 @@ class Terrain{
         this.IndexEdgeBuffer.numItems = this.eBuffer.length;
         
         console.log("triangulatedPlane: loadBuffers");
+        
+        
+        
+        ////////////////////////////////NEW///////////////////////////////////
+        console.log(this.difBuffer)
+        // Specify diffuse colors for each vertex
+        this.vertexDiffuseColor = gl.createBuffer();
+        gl.bindBuffer(gl.ARRAY_BUFFER, this.vertexDiffuseColor);
+        gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(this.difBuffer),gl.STATIC_DRAW);
+        this.vertexDiffuseColor.itemSize = 4;
+        this.vertexDiffuseColor.numItems = this.numVertices;
+        
+        console.log("Loaded material diffuse colors");
+        
+        //vertexColorBuffer = gl.createBuffer();
+        //gl.bindBuffer(gl.ARRAY_BUFFER, vertexColorBuffer);
+        //var colors = setColorVector(vertexPositionBuffer.numberOfItems, 0.0745, 0.1216, 0.2, 1.0)
+        //gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(colors), gl.STATIC_DRAW);
+        //vertexColorBuffer.itemSize = 4;
+        //vertexColorBuffer.numItems = 12;  
+        
+        
+        
+        
     }
     
     /**
@@ -139,6 +199,12 @@ class Terrain{
                            this.VertexNormalBuffer.itemSize,
                            gl.FLOAT, false, 0, 0);   
     
+        // Bind normal buffer
+        gl.bindBuffer(gl.ARRAY_BUFFER, this.vertexDiffuseColor);
+        gl.vertexAttribPointer(shaderProgram.vertexDiffuseColor, 
+                           this.vertexDiffuseColor.itemSize,
+                           gl.FLOAT, false, 0, 0);   
+        
         //Draw 
         gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, this.IndexTriBuffer);
         gl.drawElements(gl.TRIANGLES, this.IndexTriBuffer.numItems, gl.UNSIGNED_INT,0);
@@ -160,6 +226,12 @@ class Terrain{
                            this.VertexNormalBuffer.itemSize,
                            gl.FLOAT, false, 0, 0);   
     
+        // Bind normal buffer
+        gl.bindBuffer(gl.ARRAY_BUFFER, this.vertexDiffuseColor);
+        gl.vertexAttribPointer(shaderProgram.vertexDiffuseColor, 
+                           this.vertexDiffuseColor.itemSize,
+                           gl.FLOAT, false, 0, 0);  
+        
         //Draw 
         gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, this.IndexEdgeBuffer);
         gl.drawElements(gl.LINES, this.IndexEdgeBuffer.numItems, gl.UNSIGNED_INT,0);   
@@ -270,19 +342,23 @@ diamondSquare()
     var c_br = 3*this.div + 2
     var c_tl = 3*this.div*(this.div+1) + 2
     var c_tr = 3*this.div*(this.div+1)+3*this.div + 2
-    //console.log(c_bl + " " + c_br + " " + c_tl + " " +c_tr)
     
-    //Generate 4 random numbers for the corners and set new Z values in the buffer
-    var v_bl = rand_range*Math.random()-0.5*rand_range
-    var v_br = rand_range*Math.random()-0.5*rand_range
-    var v_tl = rand_range*Math.random()-0.5*rand_range
-    var v_tr = rand_range*Math.random()-0.5*rand_range
+    //Set fixed corner locations in order to have more control on map generation
+    //Bottom left
+    this.vBuffer[c_bl] = rand_range*-1*cornerHeight
+    this.setVertexColors(rand_range*-1*0.5, 0)
     
-    //Update values in the vBuffer
-    this.vBuffer[c_bl] = v_bl
-    this.vBuffer[c_br] = v_br
-    this.vBuffer[c_tl] = v_tl
-    this.vBuffer[c_tr] = v_tr
+    //Bottom right
+    this.vBuffer[c_br] = rand_range*-0.5*cornerHeight
+    this.setVertexColors(rand_range*-1*0.5, 4*this.div)
+    
+    //Top left
+    this.vBuffer[c_tl] = rand_range*0.5*cornerHeight
+    this.setVertexColors(rand_range*0.25, 4*this.div*(this.div+1))
+    
+    //Top right
+    this.vBuffer[c_tr] = rand_range*1*cornerHeight
+    this.setVertexColors(rand_range*0.5, 4*((this.div+1)*(this.div+1)-1))
 
     //Looping from side lengths of exponentially decreasing size (divided by 2)
     for(var sideLength = this.div; sideLength>=2; sideLength = sideLength = sideLength/2) 
@@ -304,6 +380,7 @@ diamondSquare()
                 var c_center = 3*x + 3*y*(this.div+1) + 2
                 var v_center = (this.vBuffer[c_bl]+this.vBuffer[c_br]+this.vBuffer[c_tl]+this.vBuffer[c_tr])/4 + rand_range*Math.random()-0.5*rand_range
                 this.vBuffer[c_center] = v_center
+                this.setVertexColors(v_center, 4*(x+y*(this.div+1)))
             }
         }
         
@@ -324,7 +401,6 @@ diamondSquare()
                     var v_center = (this.vBuffer[c_up]+this.vBuffer[c_down]+this.vBuffer[c_right])/3 + rand_range*Math.random()-0.5*rand_range
                 
                 //Right Edge
-                //lse if(x==this.div-1)
                 else if(x==this.div)
                     var v_center = (this.vBuffer[c_up]+this.vBuffer[c_down]+this.vBuffer[c_left])/3 + rand_range*Math.random()-0.5*rand_range
                 
@@ -340,10 +416,81 @@ diamondSquare()
                 else
                     var v_center = (this.vBuffer[c_up]+this.vBuffer[c_down]+this.vBuffer[c_left]+this.vBuffer[c_right])/4 + rand_range*Math.random()-0.5*rand_range
                 this.vBuffer[c_center] = v_center
+                this.setVertexColors(v_center, 4*(x+y*(this.div+1)))
             }
         }
     }
 }
+
+// Function for setting diffuse and specular colors of vertices depending on their height
+setVertexColors(h, index_1)
+{
+    //Snow
+    if (h > this.init_rand_range*frac_snow*cornerHeight)
+    {
+        this.difBuffer[index_1] = diff_snow[0];
+        this.difBuffer[index_1+1] = diff_snow[1];
+        this.difBuffer[index_1+2] = diff_snow[2];
+        this.difBuffer[index_1+3] = diff_snow[3];
+    }
+    
+    //Rock
+    else if (h > this.init_rand_range*frac_rock*cornerHeight)
+    {
+        this.difBuffer[index_1] = diff_rock[0];
+        this.difBuffer[index_1+1] = diff_rock[1];
+        this.difBuffer[index_1+2] = diff_rock[2];
+        this.difBuffer[index_1+3] = diff_rock[3];
+    }
+    
+    //Earth
+    else if (h > this.init_rand_range*frac_earth*cornerHeight)
+    {
+        this.difBuffer[index_1] = diff_earth[0];
+        this.difBuffer[index_1+1] = diff_earth[1];
+        this.difBuffer[index_1+2] = diff_earth[2];
+        this.difBuffer[index_1+3] = diff_earth[3];
+    }
+    
+    //Grass
+    else if (h > this.init_rand_range*frac_grass*cornerHeight)
+    {
+        this.difBuffer[index_1] = diff_grass[0];
+        this.difBuffer[index_1+1] = diff_grass[1];
+        this.difBuffer[index_1+2] = diff_grass[2];
+        this.difBuffer[index_1+3] = diff_grass[3];
+    }
+    
+    //Sand
+    else if (h > this.init_rand_range*frac_sand*cornerHeight)
+    {
+        this.difBuffer[index_1] = diff_sand[0];
+        this.difBuffer[index_1+1] = diff_sand[1];
+        this.difBuffer[index_1+2] = diff_sand[2];
+        this.difBuffer[index_1+3] = diff_sand[3];
+    }
+    
+    //Shallow sea
+    else if (h > this.init_rand_range*frac_shallow_sea*cornerHeight)
+    {
+        this.difBuffer[index_1] = diff_shallow_sea[0];
+        this.difBuffer[index_1+1] = diff_shallow_sea[1];
+        this.difBuffer[index_1+2] = diff_shallow_sea[2];
+        this.difBuffer[index_1+3] = diff_shallow_sea[3];
+    }
+    
+    //Deep sea
+    else
+    {
+        this.difBuffer[index_1] = diff_deep_sea[0];
+        this.difBuffer[index_1+1] = diff_deep_sea[1];
+        this.difBuffer[index_1+2] = diff_deep_sea[2];
+        this.difBuffer[index_1+3] = diff_deep_sea[3];
+    }
+}
+
+
+
 
 //Function for recalculating triangle normals after diamond square
 calculateNormals()

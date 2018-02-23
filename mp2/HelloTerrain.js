@@ -73,6 +73,7 @@ var kEdgeBlack = [0.0,0.0,0.0];
 var kEdgeWhite = [1.0,1.0,1.0];
 
 
+var kTerrainDiffuseBuffer = []
 
 //-------------------------------------------------------------------------
 /**
@@ -238,6 +239,10 @@ function setupShaders() {
   shaderProgram.vertexNormalAttribute = gl.getAttribLocation(shaderProgram, "aVertexNormal");
   gl.enableVertexAttribArray(shaderProgram.vertexNormalAttribute);
 
+  // Added attribute for vertex colors
+  shaderProgram.vertexDiffuseColor = gl.getAttribLocation(shaderProgram, "uKDiffuse");
+  gl.enableVertexAttribArray(shaderProgram.vertexDiffuseColor);
+  
   shaderProgram.mvMatrixUniform = gl.getUniformLocation(shaderProgram, "uMVMatrix");
   shaderProgram.pMatrixUniform = gl.getUniformLocation(shaderProgram, "uPMatrix");
   shaderProgram.nMatrixUniform = gl.getUniformLocation(shaderProgram, "uNMatrix");
@@ -247,7 +252,10 @@ function setupShaders() {
   shaderProgram.uniformSpecularLightColorLoc = gl.getUniformLocation(shaderProgram, "uSpecularLightColor");
   shaderProgram.uniformShininessLoc = gl.getUniformLocation(shaderProgram, "uShininess");    
   shaderProgram.uniformAmbientMaterialColorLoc = gl.getUniformLocation(shaderProgram, "uKAmbient");  
-  shaderProgram.uniformDiffuseMaterialColorLoc = gl.getUniformLocation(shaderProgram, "uKDiffuse");
+  //shaderProgram.uniformDiffuseMaterialColorLoc = gl.getUniformLocation(shaderProgram, "uKDiffuse");
+  
+  // Attribute for varying diffuse vertex colors
+  shaderProgram.uniformDiffuseMaterialColorLoc = gl.getAttribLocation(shaderProgram, "uKDiffuse");
   shaderProgram.uniformSpecularMaterialColorLoc = gl.getUniformLocation(shaderProgram, "uKSpecular");
 }
 
@@ -262,7 +270,7 @@ function setupShaders() {
 function setMaterialUniforms(alpha,a,d,s) {
   gl.uniform1f(shaderProgram.uniformShininessLoc, alpha);
   gl.uniform3fv(shaderProgram.uniformAmbientMaterialColorLoc, a);
-  gl.uniform3fv(shaderProgram.uniformDiffuseMaterialColorLoc, d);
+  //gl.uniform3fv(shaderProgram.uniformDiffuseMaterialColorLoc, d);
   gl.uniform3fv(shaderProgram.uniformSpecularMaterialColorLoc, s);
 }
 
@@ -286,7 +294,7 @@ function setLightUniforms(loc,a,d,s) {
  * Populate buffers with data
  */
 function setupBuffers() {
-    myTerrain = new Terrain(64,-0.5,0.5,-0.5,0.5, 0.4, 0.6);    //Added parameters for diamond square in constructor
+    myTerrain = new Terrain(256,-0.5,0.5,-0.5,0.5, 0.3, 0.6);    //Added parameters for diamond square in constructor
     myTerrain.loadBuffers();
 }
 
@@ -351,7 +359,9 @@ function draw() {
   gl = createGLContext(canvas);
   setupShaders();
   setupBuffers();
-  gl.clearColor(0.0, 0.0, 0.0, 1.0);
+  //gl.clearColor(0.0, 0.0, 0.0, 1.0);
+  gl.clearColor(135/255, 206/255, 235/255, 1.0);
+  
   gl.enable(gl.DEPTH_TEST);
   tick();
 }
