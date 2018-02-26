@@ -41,6 +41,7 @@ var myTerrain;
 // View parameters
 /** @global Location of the camera in world coordinates */
 var eyePt = vec3.fromValues(0.0,0.0,0.0);
+
 /** @global Direction of the view in world coordinates */
 var viewDir = vec3.fromValues(0.0,0.0,-1.0);
 /** @global Up vector for view matrix creation, in world coordinates */
@@ -50,7 +51,7 @@ var viewPt = vec3.fromValues(0.0,0.0,0.0);
 
 //Light parameters
 /** @global Light position in VIEW coordinates */
-var lightPosition = [0,3,3];
+var lightPosition = [0,20,3];
 /** @global Ambient light color/intensity for Phong reflection */
 var lAmbient = [0,0,0];
 /** @global Diffuse light color/intensity for Phong reflection */
@@ -61,12 +62,10 @@ var lSpecular =[0,0,0];
 //Material parameters
 /** @global Ambient material color/intensity for Phong reflection */
 var kAmbient = [1.0,1.0,1.0];
-/** @global Diffuse material color/intensity for Phong reflection */
-var kTerrainDiffuse = [205.0/255.0,163.0/255.0,63.0/255.0];
 /** @global Specular material color/intensity for Phong reflection */
-var kSpecular = [0.0,0.0,0.0];
+var kSpecular = [0,0,0];
 /** @global Shininess exponent for Phong reflection */
-var shininess = 23;
+var shininess = 250;
 /** @global Edge color fpr wireframeish rendering */
 var kEdgeBlack = [0.0,0.0,0.0];
 /** @global Edge color for wireframe rendering */
@@ -238,10 +237,6 @@ function setupShaders() {
 
   shaderProgram.vertexNormalAttribute = gl.getAttribLocation(shaderProgram, "aVertexNormal");
   gl.enableVertexAttribArray(shaderProgram.vertexNormalAttribute);
-
-  // Added attribute for vertex colors
-  shaderProgram.vertexDiffuseColor = gl.getAttribLocation(shaderProgram, "uKDiffuse");
-  gl.enableVertexAttribArray(shaderProgram.vertexDiffuseColor);
   
   shaderProgram.mvMatrixUniform = gl.getUniformLocation(shaderProgram, "uMVMatrix");
   shaderProgram.pMatrixUniform = gl.getUniformLocation(shaderProgram, "uPMatrix");
@@ -252,11 +247,10 @@ function setupShaders() {
   shaderProgram.uniformSpecularLightColorLoc = gl.getUniformLocation(shaderProgram, "uSpecularLightColor");
   shaderProgram.uniformShininessLoc = gl.getUniformLocation(shaderProgram, "uShininess");    
   shaderProgram.uniformAmbientMaterialColorLoc = gl.getUniformLocation(shaderProgram, "uKAmbient");  
-  //shaderProgram.uniformDiffuseMaterialColorLoc = gl.getUniformLocation(shaderProgram, "uKDiffuse");
   
-  // Attribute for varying diffuse vertex colors
-  shaderProgram.uniformDiffuseMaterialColorLoc = gl.getAttribLocation(shaderProgram, "uKDiffuse");
-  shaderProgram.uniformSpecularMaterialColorLoc = gl.getUniformLocation(shaderProgram, "uKSpecular");
+  //Uniform variable for setting colors depenging on vertex z coordinate
+  shaderProgram.uniformCornerHeightLoc = gl.getUniformLocation(shaderProgram, "cornerHeight");  
+  
 }
 
 //-------------------------------------------------------------------------
@@ -267,10 +261,9 @@ function setupShaders() {
  * @param {Float32Array} d Diffuse material color
  * @param {Float32Array} s Specular material color
  */
-function setMaterialUniforms(alpha,a,d,s) {
+function setMaterialUniforms(alpha,a,s) {
   gl.uniform1f(shaderProgram.uniformShininessLoc, alpha);
   gl.uniform3fv(shaderProgram.uniformAmbientMaterialColorLoc, a);
-  //gl.uniform3fv(shaderProgram.uniformDiffuseMaterialColorLoc, d);
   gl.uniform3fv(shaderProgram.uniformSpecularMaterialColorLoc, s);
 }
 
@@ -294,7 +287,7 @@ function setLightUniforms(loc,a,d,s) {
  * Populate buffers with data
  */
 function setupBuffers() {
-    myTerrain = new Terrain(256,-0.5,0.5,-0.5,0.5, 0.3, 0.6);    //Added parameters for diamond square in constructor
+    myTerrain = new Terrain(512,-3,3,-3,3, 1.0, 0.63, 0.2);    //Added parameters for diamond square in constructor
     myTerrain.loadBuffers();
 }
 
@@ -327,24 +320,11 @@ function draw() {
     mat4.rotateX(mvMatrix, mvMatrix, degToRad(-75));
     setMatrixUniforms();
     setLightUniforms(lightPosition,lAmbient,lDiffuse,lSpecular);
+    setMaterialUniforms(shininess,kAmbient,kSpecular);
     
-    if ((document.getElementById("polygon").checked) || (document.getElementById("wirepoly").checked))
-    { 
-      setMaterialUniforms(shininess,kAmbient,kTerrainDiffuse,kSpecular); 
-      myTerrain.drawTriangles();
-    }
-    
-    if(document.getElementById("wirepoly").checked)
-    {
-      setMaterialUniforms(shininess,kAmbient,kEdgeBlack,kSpecular);
-      myTerrain.drawEdges();
-    }
-
-    if(document.getElementById("wireframe").checked)
-    {
-      setMaterialUniforms(shininess,kAmbient,kEdgeWhite,kSpecular);
-      myTerrain.drawEdges();
-    }
+    //Value to determine color depending on height
+    gl.uniform1f(shaderProgram.uniformCornerHeightLoc, myTerrain.init_rand_range * myTerrain.cornerHeight);
+    myTerrain.drawTriangles();
     mvPopMatrix();
 
   
@@ -359,7 +339,6 @@ function draw() {
   gl = createGLContext(canvas);
   setupShaders();
   setupBuffers();
-  //gl.clearColor(0.0, 0.0, 0.0, 1.0);
   gl.clearColor(135/255, 206/255, 235/255, 1.0);
   
   gl.enable(gl.DEPTH_TEST);
