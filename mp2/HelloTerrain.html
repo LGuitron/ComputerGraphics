@@ -47,7 +47,8 @@
         gl_Position = uPMatrix * uMVMatrix * vec4(aVertexPosition, 1.0);
         vec4 vertPos4 = uMVMatrix * vec4(aVertexPosition, 1.0);
         vertPos = vec3(vertPos4) / vertPos4.w;
-        normalInterp = uNMatrix * aVertexNormal;
+        vec3 normNormal = normalize(aVertexNormal);
+        normalInterp = uNMatrix * normNormal;
         
         //Set color constants depending on vertex height
         if(aVertexPosition.z > cornerHeight*frac_snow)

@@ -1,6 +1,7 @@
 /**
- * @fileoverview Terrain - A simple 3D terrain using WebGL
+ * @fileoverview Terrain 3D terraing with diamond square elevations using WebGL
  * @author Eric Shaffer
+ * @author Luis Guitron
  */
 
 /** Class implementing 3D terrain. */
@@ -276,7 +277,6 @@ generateLines()
  * Diamond-square algorithm for terrain elevations
  * 
  */
-
 diamondSquare()
 {
     //Set range of random value for current iteration
@@ -363,7 +363,10 @@ diamondSquare()
     }
 }
 
-//Function for recalculating triangle normals after diamond square
+/**
+ * Recalculate normal for all vertices after
+ * changing their height with diamond square
+ */
 calculateNormals()
 {
     for (var i=0;i<this.fBuffer.length/3;i+=1)

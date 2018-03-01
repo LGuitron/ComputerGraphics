@@ -1,7 +1,8 @@
 
 /**
- * @file A simple WebGL example drawing central Illinois style terrain
- * @author Eric Shaffer <shaffer1@illinois.edu>  
+ * @file WebGL example for drawing terraing with diamond square elevations
+ * @author Eric Shaffer <shaffer1@illinois.edu>
+ * @author Luis Guitron <leg4@illinois.edu>
  */
 
 /** @global The WebGL context */
@@ -51,7 +52,7 @@ var viewPt = vec3.fromValues(0.0,0.0,0.0);
 
 //Light parameters
 /** @global Light position in VIEW coordinates */
-var lightPosition = [0,20,3];
+var lightPosition = [10,12,3];
 /** @global Ambient light color/intensity for Phong reflection */
 var lAmbient = [0,0,0];
 /** @global Diffuse light color/intensity for Phong reflection */
