@@ -61,7 +61,10 @@ var viewPt = vec3.fromValues(0.0,0.0,0.0);
 
 //Light parameters
 /** @global Light position in VIEW coordinates */
-var lightPosition = [10,12,3];
+/**var lightPosition = [10,12,3];*/
+var lightPosition = [0,10,0];
+
+
 /** @global Ambient light color/intensity for Phong reflection */
 var lAmbient = [0,0,0];
 /** @global Diffuse light color/intensity for Phong reflection */
@@ -106,8 +109,8 @@ var maxSpeed = 0.01;
 var speed_delta = 0.0005;
 
 var test = false;
-var y_rotation_speed = 0.015;
-var x_rotation_speed = 0.015;
+var y_rotation_speed = 0.02;
+var x_rotation_speed = 0.02;
 var orientation_delta = quat.create();
 
 /** @global variables storing currently pressed keys **/
