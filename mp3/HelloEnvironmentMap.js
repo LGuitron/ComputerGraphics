@@ -39,12 +39,21 @@ var sphereVertexPositionBuffer;
 //Create a place to store normals for shading
 var sphereVertexNormalBuffer;
 
+
+var start_eyePt = vec3.fromValues(0.0,0.0,30.0);
+var start_viewDir = vec3.fromValues(0.0,0.0,-1.0);
+
 // View parameters
-// 40
-var eyePt = vec3.fromValues(0.0,0.0,40.0);
+var eyePt = vec3.fromValues(0.0,0.0,30.0);
 var viewDir = vec3.fromValues(0.0,0.0,-1.0);
 var up = vec3.fromValues(0.0,1.0,0.0);
 var viewPt = vec3.fromValues(0.0,0.0,0.0);
+
+
+// Position of the light
+var uStartLightPosition = vec3.fromValues(10,20,1);
+var uLightPosition = vec3.fromValues(10,20,1);
+
 
 // Create the normal
 var nMatrix = mat3.create();
@@ -108,6 +117,7 @@ function setupCubeBuffers() {
     var v7 = [-1,1,1];
     
     // Front vertices
+    
     var n0 = [1/3, 1/3, -1/3];
     var n1 = [-1/3, 1/3, -1/3];
     var n2 = [-1/3, 1/3, -1/3];
@@ -118,6 +128,20 @@ function setupCubeBuffers() {
     var n5 = [-1/3, 1/3, -1/3];
     var n6 = [-1/3, 1/3, -1/3];
     var n7 = [1/3, 1/3, -1/3];
+    
+    
+    /*var n0 = [1/3, 1/3, 1/3];
+    var n1 = [-1/3, 1/3, 1/3];
+    var n2 = [-1/3, 1/3, 1/3];
+    var n3 = [1/3, 1/3, 1/3];
+    
+    // Back vertices
+    var n4 = [1/3, 1/3, -1/3];
+    var n5 = [-1/3, 1/3, -1/3];
+    var n6 = [-1/3, 1/3, -1/3];
+    var n7 = [1/3, 1/3, -1/3];*/
+    
+    
     
     // Front face
     pushVertex(vertexArray, vertexNormals, v0, n0);
@@ -428,7 +452,16 @@ function draw()
         /**
         *  Draw Cube
         */
-
+        
+        // Calculate eyePt and view direction according to the yAngle (user input)//
+        vec3.rotateY(eyePt, start_eyePt, vec3.fromValues(0,0,0), yAngle)
+        vec3.rotateY(viewDir, start_viewDir, vec3.fromValues(0,0,0), yAngle)
+        vec3.rotateY(uLightPosition, uStartLightPosition, vec3.fromValues(0,0,0), -1*yAngle)
+        gl.uniform3fv(gl.getUniformLocation(shaderProgram, "uLightPosition"), uLightPosition);
+        gl.uniform3fv(gl.getUniformLocation(shaderProgram, "eyePt"), eyePt);
+        //gl.uniform3fv(gl.getUniformLocation(shaderProgram, "viewDir"), viewDir);
+        
+        
         gl.viewport(0, 0, gl.viewportWidth, gl.viewportHeight);
         gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
 
@@ -445,10 +478,9 @@ function draw()
         //  What IF Condition should go here?
         mvPushMatrixBox();
         
-        mat4.rotateY(mvMatrixBox, mvMatrixBox, yAngle);
+        //mat4.rotateY(mvMatrixBox, mvMatrixBox, yAngle);
         
         // New line
-        mat4.rotateX(mvMatrixBox, mvMatrixBox, zAngle);
         vec3.set(transformVec,40,40,40);
         mat4.scale(mvMatrixBox, mvMatrixBox,transformVec);
         
@@ -486,24 +518,15 @@ function draw()
         //ADD an if statement to prevent early drawing of myMesh
         mvPushMatrix();
         
-        /*var teapot_translate = [-0.5*(myMesh.maxXYZ[0]+myMesh.minXYZ[0]) , -0.5*(myMesh.maxXYZ[1]+myMesh.minXYZ[1]), -0.5*(myMesh.maxXYZ[2]+myMesh.minXYZ[2])];
-        mat4.translate(mvMatrix, mvMatrix, [teapot_translate[0],teapot_translate[1],teapot_translate[2]+84.5]);
-        mat4.scale(mvMatrix, mvMatrix, [teapotScale,teapotScale,teapotScale]);
-        mat4.rotateY(mvMatrix, mvMatrix, yAngle);
-        mat4.multiply(mvMatrix,vMatrix,mvMatrix);*/
-        
         var teapot_translate = [-0.5*(myMesh.maxXYZ[0]+myMesh.minXYZ[0]) , -0.5*(myMesh.maxXYZ[1]+myMesh.minXYZ[1]), -0.5*(myMesh.maxXYZ[2]+myMesh.minXYZ[2])];
         mat4.translate(mvMatrix, mvMatrix, [teapot_translate[0],teapot_translate[1],teapot_translate[2]]);
         mat4.scale(mvMatrix, mvMatrix, [teapotScale,teapotScale,teapotScale]);
-        mat4.rotateY(mvMatrix, mvMatrix, yAngle);
-        mat4.multiply(mvMatrix,vMatrix,mvMatrix);
         
+        
+        mat4.multiply(mvMatrix,vMatrix,mvMatrix);
         
         setMatrixUniforms();
         myMesh.bindBuffers();
-        
-        //console.log("mvMatrix: " , mvMatrix);
-        //console.log("nMatrix: ", nMatrix );
         
         gl.drawElements(gl.TRIANGLES, myMesh.IndexTriBuffer.numItems, gl.UNSIGNED_INT,0);
         mvPopMatrix();
@@ -525,17 +548,26 @@ function animate() {
 function handleKeyDown(event) {
     event.preventDefault();
     
+    
+
+    if (event["key"] == "ArrowLeft" || event["key"] == "a" || event["key"] == "A") {
+        yAngle -= 0.1;
+    } else if (event["key"] == "ArrowRight" || event["key"] == "d" || event["key"] == "D") {
+        yAngle += 0.1;
+    }
+    
+    
+    /*
     //Rotations in euler angles
-    var xRot = 0;
-    var zRot = 0;
    
     //Tilt right
     if(map['d'] || map['D'] || map['ArrowRight'])
-        yAngle -= 0.1;
+        yAngle += 0.1;
     
     //Tilt left
     if(map['a'] || map['A'] || map['ArrowLeft'])
-        yAngle += 0.1;
+        yAngle -= 0.1;
+    */
 }
 
 //-------------------------------------------------------------------------
