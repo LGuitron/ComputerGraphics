@@ -59,11 +59,16 @@ var upQuat = quat.create();
 /** @global Location of a point along viewDir in world coordinates */
 var viewPt = vec3.fromValues(0.0,0.0,0.0);
 
-//Light parameters
+//Pos parameters
 /** @global Light position in VIEW coordinates */
-/**var lightPosition = [10,12,3];*/
-var lightPosition = [0,10,0];
+var initialLightPos = [10.0, 12.0, 3.0];
+var lightPosition = [10.0,12.0,3.0];
+var lightPosQuat = quat.create();
 
+/** @global Light direction as vector and as quaternion */
+//var initialLightDir = [0.0,1.0,0.0]
+//var lightDirQuat = quat.create();
+//var lightDir = vec3.create();
 
 /** @global Ambient light color/intensity for Phong reflection */
 var lAmbient = [0,0,0];
@@ -295,6 +300,10 @@ function setupShaders() {
   
   // Uniform variable for setting fog in the environment
   shaderProgram.uniformFogLoc = gl.getUniformLocation(shaderProgram, "fogDensity");  
+  
+  // Uniform variable for the light direction vector
+  shaderProgram.uniformLightDirLoc = gl.getUniformLocation(shaderProgram, "lightDir"); 
+  // shaderProgram.uniformViewDirLoc = gl.getUniformLocation(shaderProgram, "viewDir"); 
 }
 
 //-------------------------------------------------------------------------
@@ -375,9 +384,6 @@ function draw() {
         gl.uniform1f(shaderProgram.uniformFogLoc, 0.35);
     else
         gl.uniform1f(shaderProgram.uniformFogLoc, 0.0);
-    
-    
-    
     myTerrain.drawTriangles();
     mvPopMatrix();
 
@@ -422,42 +428,23 @@ function sceneRotations()
     // Model view Matrix with initial rotations, and with rotations from user input
     // using the orientation quaternion//
     rotMatrix = mat4.create();
-    //mat4.fromQuat(rotMatrix,orientation);
-    //mat4.multiply(mvMatrix, mvMatrix, rotMatrix);
     mat4.fromQuat(rotMatrix,mv_rotation);
     mat4.multiply(mvMatrix, mvMatrix, rotMatrix);
     
-    
-    // Calculate new move direction by using the quaternion for the current
-    // orientation, as well as its conjugate
-    /*quat.set(moveDirection, initial_move_direction[0], initial_move_direction[1], initial_move_direction[2],0);
-    quat.multiply(moveDirection, orientation, moveDirection);        //Multiply by orientation
-    var orientConjugate = quat.create();
-    quat.conjugate(orientConjugate, orientation)
-    quat.multiply(moveDirection, orientConjugate, moveDirection);*/    //Multiply by conjugate of orientation (components x,y,z are the new view direction)
-    //console.log("V: " , viewDir);
-    //Set quaternion for view direction according to initial view directio
-    
     var orientConjugate = quat.create();
     quat.conjugate(orientConjugate, orientation)
     
-    
-    //quat.set(viewDirQuat, view_dir_0[0], view_dir_0[1], view_dir_0[2],0);
     quat.set(viewDirQuat, initial_view_dir[0],initial_view_dir[1],initial_view_dir[2],0);
     quat.multiply(viewDirQuat, orientation, viewDirQuat);        //Multiply by orientation
     quat.multiply(viewDirQuat, viewDirQuat, orientConjugate);    //Multiply by conjugate of orientation (components x,y,z are the new view direction)
     
-    
-    
-    /*quat.set(viewDirQuat, viewDir[0],viewDir[1],viewDir[2],0);
-    var orientConjugate = quat.create();
-    quat.conjugate(orientConjugate, orientation_delta)
-    quat.multiply(viewDirQuat, orientation_delta, viewDirQuat);        //Multiply by orientation
-    quat.multiply(viewDirQuat, viewDirQuat, orientConjugate);   */ //Multiply by conjugate of orientation (components x,y,z are the new view direction)
-    
     quat.set(upQuat, 0,1,0,0);
     quat.multiply(upQuat, orientation, upQuat);        //Multiply by orientation
     quat.multiply(upQuat, upQuat, orientConjugate);    //Multiply by conjugate of orientation (components x,y,z are the new view direction)
+    
+    quat.set(lightPosQuat, initialLightPos[0],initialLightPos[1],initialLightPos[2],0);
+    quat.multiply(lightPosQuat, orientConjugate, lightPosQuat);        //Multiply by orientation
+    quat.multiply(lightPosQuat, lightPosQuat, orientation);    //Multiply by conjugate of orientation (components x,y,z are the new view direction)
     
     viewDir[0] = viewDirQuat[0];
     viewDir[1] = viewDirQuat[1];
@@ -466,6 +453,10 @@ function sceneRotations()
     up[0] = upQuat[0];
     up[1] = upQuat[1];
     up[2] = upQuat[2];
+    
+    lightPosition[0] = lightPosQuat[0];
+    lightPosition[1] = lightPosQuat[1];
+    lightPosition[2] = lightPosQuat[2];
 }
 
 /*
@@ -511,9 +502,6 @@ function handleRotation()
     vec3.cross(y_rotation_axis,initial_view_dir,initial_up);
     quat.setAxisAngle(orientation_delta, y_rotation_axis, zRot);
     quat.multiply(orientation, orientation, orientation_delta);
-    
-
-    
 }
 
 
@@ -531,14 +519,12 @@ function handleSpeed()
             speed = 0.0;
 }   
 
-
 /*
  * Update map when user presses or releases any key
  */
 onkeydown = onkeyup = function(e){
     e = e || event; // to deal with IE
     map[e.key] = e.type == 'keydown';
-    console.log(map);
 }
 
 

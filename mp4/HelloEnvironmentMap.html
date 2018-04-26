@@ -1,0 +1,195 @@
+<!DOCTYPE HTML> 
+<html lang="en"> 
+<head>
+    <title>Particle Simulation</title>
+    <meta charset="utf-8"> 
+    <link rel="stylesheet" type="text/css" href="bootstrap.css">
+</head>
+
+<!--
+<script id="shader-vs" type="x-shader/x-vertex">
+   attribute vec3 aVertexNormal;
+   attribute vec3 aVertexPosition;
+   
+    uniform mat4 uMVMatrix;
+    uniform mat4 uPMatrix;
+    uniform mat3 uNMatrix;
+    
+    varying vec3 vVertexNormal;
+    varying vec4 vVertexPosition;
+    varying vec3 vReflection;
+    
+    void main(void) {
+      vVertexPosition = vec4(aVertexPosition, 1.0);
+      vVertexNormal = aVertexNormal;
+      
+      gl_Position = uPMatrix*uMVMatrix*vec4(aVertexPosition, 1.0);
+    }   
+</script>
+    
+<script id="shader-fs" type="x-shader/x-fragment">
+    precision mediump float;
+
+    varying vec3 vVertexNormal;
+    varying vec4 vVertexPosition;
+
+    uniform vec3 sphere_diffuse_color;
+    
+    void main(void) {
+        gl_FragColor = vec4(sphere_diffuse_color.xyz, 1.0);
+     }
+</script>
+-->
+
+<script id="shader-vs" type="x-shader/x-vertex">
+
+    attribute vec3 aVertexNormal;
+    attribute vec3 aVertexPosition;
+   
+    uniform mat4 uMVMatrix;
+    uniform mat4 uPMatrix;
+    uniform mat3 uNMatrix;
+    
+    varying vec3 vVertexNormal;
+    varying vec4 vVertexPosition;
+    varying vec3 vReflection;
+    
+    varying vec3 normalInterp;
+
+    void main()
+    {
+        vVertexPosition = vec4(aVertexPosition, 1.0);
+        vVertexNormal = aVertexNormal;
+        gl_Position = uPMatrix * uMVMatrix * vec4(aVertexPosition, 1.0);
+        vec3 normNormal = normalize(aVertexNormal);
+        normalInterp = uNMatrix * normNormal;
+    }
+</script>
+
+<script id="shader-fs" type="x-shader/x-fragment">
+    
+    precision mediump float;
+    
+    varying vec3 vVertexNormal;
+    varying vec4 vVertexPosition;
+    
+    varying vec3 normalInterp;
+    
+    vec3 lightDir = vec3(0,1,1);
+    //vec3 eyePt = vec3(0,0,150.0);
+    uniform vec3 eyePt;
+    
+    vec3 uAmbientLightColor = vec3(1,1,1);
+    vec3 uDiffuseLightColor = vec3(1,1,1);
+    vec3 uSpecularLightColor = vec3(1,1,1);
+
+    vec3 uKAmbient = vec3(0.0,0.0,0.0);
+    vec3 uKSpecular = vec3(0,0,0);
+    float uShininess = 100.0;
+    
+    uniform vec3 sphere_diffuse_color;
+    
+    void main()
+    {
+        vec3 normal = normalize(normalInterp);
+
+        float lambertian = max(dot(lightDir,normal), 0.0);
+        float specular = 0.0;
+        
+        
+        if(lambertian > 0.0) 
+        {
+            vec3 viewDir = normalize(eyePt - vVertexPosition.xyz);
+            vec3 halfDir = normalize(lightDir + viewDir);
+            float specAngle = max(dot(halfDir, normal), 0.0);
+            specular = pow(specAngle, uShininess);
+        }
+        vec4 fragColor = vec4(uAmbientLightColor * uKAmbient +
+                                lambertian * sphere_diffuse_color * uDiffuseLightColor +
+                                specular * uKSpecular * uSpecularLightColor, 1.0);
+        
+        gl_FragColor = fragColor;
+    }
+</script>
+
+
+
+    
+<script src="gl-matrix-min.js"></script> 
+<script src="webgl-utils.js"></script>
+<script src="simpleModeling.js"></script>  
+<script src="HelloEnvironmentMap.js"></script>   
+<body onload="startup();">
+
+<div class='container'>
+        <div class='row'>
+            <div class='col-md-12 col-sm-12'>
+                <h1 class='text-center'>Particle Simulator</h1>
+            </div>
+        </div>
+        <div class='row'>
+            <div class='col-md-8 col-sm-8'>
+                 <canvas id="myGLCanvas" width="700" height="500" ></canvas>
+            </div>
+            
+            <div class='col-md-4 col-sm-4'>
+                <div class='panel panel-primary'>
+                    <div class='row'>
+                        <div class='col-md-12 col-sm-12'>
+                            <h3 class='text-center'>Particle Count: <span id="sphereCount"></span></h3>
+                            <button type="button" class="btn btn-primary center-block" onclick = "resetEnvironment()">Reset Environment</button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class='panel panel-primary'>
+                    <div class='row'>
+                        <div class='col-md-12 col-sm-12'>
+                            <h3 class='text-center'>Instructions</h3>
+                        </div>
+                    </div>
+                    
+                    <div class='panel-body'>
+                        <div class='row'>
+                            <div class='col-md-12 col-sm-12'>
+                                <h4 class='text-center'>Create Particles</h4>
+                                <div style="text-align:center">+1 particle: &#8592 </div>
+                                <div style="text-align:center">+3 particles: &#8595</div>
+                                <div style="text-align:center">+10 particles: &#8593</div>
+                                <div style="text-align:center">+30 particles: &#8594</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class='panel panel-primary'>
+                    <div class='row'>
+                        <div class='col-md-12 col-sm-12'>
+                            <h3 class='text-center'>Parameters</h3>
+                        </div>
+                    </div>
+                    <div class='row'>
+                        <form id="input_form">
+                            <div class='col-md-6 col-sm-6'>
+                                <div class="slidecontainer">
+                                    <h4 class='text-center'>Gravity: 
+                                    <span id="gravityText"></span> m/s</h4>
+                                    <input type="range" min="5" max="50" value="10" class="slider" id="gravity">
+                                </div>
+                            </div>
+                            <div class='col-md-6 col-sm-6'>
+                                <div class="slidecontainer">
+                                    <h4 class='text-center'>Drag: 
+                                    <span id="dragText"></span></h4>
+                                    <input type="range" min="0.01" max="1.00" value="0.90" class="slider" id="drag" step="0.01">
+                                </div>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</body>
+
+</html>

@@ -1,0 +1,198 @@
+<!DOCTYPE HTML> 
+<html lang="en"> 
+<head>
+<title>Hello Map</title>
+<meta charset="utf-8">
+<link rel="stylesheet" type="text/css" href="bootstrap.css">
+</head>
+
+<script id="shader-vs" type="x-shader/x-vertex">
+
+    attribute vec3 aVertexNormal;
+    attribute vec3 aVertexPosition;
+   
+    uniform mat4 uMVMatrix;
+    uniform mat4 uPMatrix;
+    uniform mat3 uNMatrix;
+    
+    varying vec3 vVertexNormal;
+    varying vec4 vVertexPosition;
+    
+    varying vec3 normalInterp;
+
+    void main()
+    {
+        vVertexPosition = vec4(aVertexPosition, 1.0);
+        vVertexNormal = aVertexNormal;
+        gl_Position = uPMatrix * uMVMatrix * vec4(aVertexPosition, 1.0);
+        vec3 normNormal = normalize(aVertexNormal);
+        normalInterp = uNMatrix * normNormal;
+    }
+</script>
+
+<script id="shader-fs" type="x-shader/x-fragment">
+    
+    precision mediump float;
+    
+    varying vec3 vVertexNormal;
+    varying vec4 vVertexPosition;
+    
+    varying vec3 normalInterp;
+    uniform vec3 uLightPosition;
+    uniform vec3 eyePt;
+    
+    //uniform vec3 viewDir;
+    
+    vec3 uAmbientLightColor = vec3(1,1,1);
+    vec3 uDiffuseLightColor = vec3(1,1,1);
+    vec3 uSpecularLightColor = vec3(1,1,1);
+    
+    vec3 uKDiffuse;
+    vec3 uKAmbient = vec3(0.0,0.0,0.0);
+    vec3 uKSpecular = vec3(0,0,0);
+    float uShininess = 100.0;
+
+    uniform samplerCube uCubeSampler;
+    uniform bool mapEnvironment;
+    
+    
+    // Boolean to determine how to render teapot
+    uniform bool reflectiveTeapot;
+    
+    void main()
+    {
+        if(mapEnvironment)
+        {
+            vec4 color = textureCube(uCubeSampler, normalize(vVertexPosition).xyz);
+            uKDiffuse = color.xyz;
+            gl_FragColor = vec4(uKDiffuse, 1.0);
+        }
+        
+        // Render teapot
+        else
+        {    
+            vec3 viewDir = normalize(eyePt - vVertexPosition.xyz);
+
+            // Render reflective teapot
+            if(reflectiveTeapot)
+            {
+                vec3 vReflection = viewDir - 2.0*dot(viewDir, normalize(normalInterp))*normalize(normalInterp);
+                vec4 color = textureCube(uCubeSampler, normalize(vReflection).xyz);
+                vec4 fragColor = vec4(color.xyz, 1.0);
+                gl_FragColor = fragColor;
+            }
+            
+            // Regular teapot
+            else
+            {
+                uKDiffuse = vec3(0.753,0.753,0.753);
+                uKSpecular = vec3(0.7, 0.7, 0.7);
+            
+                vec3 normal = normalize(normalInterp);
+                vec3 lightDir = normalize(uLightPosition - vVertexPosition.xyz);
+                
+                float lambertian = max(dot(lightDir,normal), 0.0);
+                float specular = 0.0;
+                
+                
+                if(lambertian > 0.0) 
+                {
+                    vec3 viewDir = normalize(eyePt - vVertexPosition.xyz);
+                    vec3 halfDir = normalize(lightDir + viewDir);
+                    float specAngle = max(dot(halfDir, normal), 0.0);
+                    specular = pow(specAngle, uShininess);
+                }
+                vec4 fragColor = vec4(uAmbientLightColor * uKAmbient +
+                                        lambertian * uKDiffuse * uDiffuseLightColor +
+                                        specular * uKSpecular * uSpecularLightColor, 1.0);
+                
+                gl_FragColor = fragColor;
+            }
+        }
+    }
+</script>
+
+
+
+<script src="gl-matrix-min.js"></script> 
+<script src="webgl-utils.js"></script>
+<script src="simpleModeling.js"></script>
+<script src="TriMesh.js"></script>  
+<script src="HelloEnvironmentMap.js"></script>   
+<body onload="startup();">
+
+     <div class='container'>
+        <div class='row'>
+            <div class='col-md-12 col-sm-12'>
+                <h1 class='text-center'>Teapot</h1>
+            </div>
+        </div>
+        <div class='row'>
+            <div class='col-md-8 col-sm-8'>
+                 <canvas id="myGLCanvas" width="750" height="500" ></canvas>
+            </div>
+            
+            <div class='col-md-4 col-sm-4'>
+                <div class='panel panel-primary'>
+                    <div class='row'>
+                        <div class='col-md-12 col-sm-12'>
+                            <h3 class='text-center'>Instructions</h3>
+                        </div>
+                    </div>
+                    
+                    <div class='panel-body'>
+                        <div class='row'>
+                            <div class='col-md-12 col-sm-12'>
+                                <h4>Orbit Around Teapot</h4>
+                                Clockwise: &#8592 or A
+                                <br>
+                                Counterclockwise: &#8594 or D
+                                <br>
+                                
+                                <h4>Rotate Teapot (Around Z)</h4>
+                                Clockwise: Q
+                                <br>
+                                Counterclockwise: W
+                                <br>
+                                
+                                <h4>Rotate Teapot (Around X)</h4>
+                                Clockwise: E
+                                <br>
+                                Counterclockwise: R
+                                <br>
+                                
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class='panel panel-primary'>
+                    <div class='row'>
+                        <div class='col-md-12 col-sm-12'>
+                            <h3 class='text-center'>Parameters</h3>
+                        </div>
+                    </div>
+                    <div class='row'>
+                        <div class='col-md-3 col-sm-3'></div>
+                        <div class='col-md-6 col-sm-6'>
+                            <form id="input_form">
+                                <fieldset>
+                                    Reflective Teapot
+                                    <label class="switch">
+                                        <input type="checkbox" id="reflective" value="reflective" checked>
+                                        <span class="slider round"></span> 
+                                    </h2>
+                                </fieldset>
+                            </form>
+                        </div>
+                        <div class='col-md-3 col-sm-3'></div>
+                    </div>
+                </div>
+                
+            </div>
+        </div>
+    </div>
+ 
+</body>
+
+</html>
